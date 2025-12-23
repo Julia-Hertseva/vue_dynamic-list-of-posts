@@ -1,33 +1,70 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import LayoutHeader from './components/LayoutHeader.vue'
 import PostsList from './components/PostsList.vue'
+import AppSidebar from './components/AppSidebar.vue'
 import AppLoader from './components/AppLoader.vue'
 import LoginForm from './components/LoginForm.vue'
 import NeedToRegister from './components/NeedToRegister.vue'
+import InputField from './components/InputField.vue'
 import * as usersApi from './api/users'
 import * as postsApi from './api/posts'
 import type { User, Post } from './types'
 
 const currentUser = ref<User | null>(null)
-const isLoggedIn = ref(false)
+const isLoggedIn = computed(() => !!currentUser.value)
 
-const email = ref('')
-const name = ref('')
-const loginError = ref<string | null>(null)
-const isLoginLoading = ref(false)
-const isRegistering = ref(false)
+const authForm = ref({
+  email: '',
+  name: '',
+  error: null as string | null,
+  isLoading: false,
+  isRegistering: false,
+})
 
 const posts = ref<Post[]>([])
 const postsError = ref<string | null>(null)
 const isPostsLoading = ref(false)
+
+const sidebarState = ref({
+  isOpen: false,
+  mode: 'view' as 'view' | 'create',
+  currentPost: null as Post | null,
+})
+
+const isSidebarOpen = computed(() => sidebarState.value.isOpen)
+const isCreatingPost = computed(() => sidebarState.value.mode === 'create')
+const currentPost = computed(() => sidebarState.value.currentPost)
+
+const openSidebar = (mode: 'view' | 'create', post: Post | null = null) => {
+  sidebarState.value = {
+    isOpen: true,
+    mode,
+    currentPost: post,
+  }
+}
+
+const closeSidebar = () => {
+  sidebarState.value = {
+    isOpen: false,
+    mode: 'view',
+    currentPost: null,
+  }
+}
+
+const openCreatePostForm = () => {
+  openSidebar('create')
+}
+
+const openPost = (post: Post) => {
+  openSidebar('view', post)
+}
 
 const loadUser = () => {
   const savedUser = localStorage.getItem('currentUser')
   if (savedUser) {
     try {
       currentUser.value = JSON.parse(savedUser)
-      isLoggedIn.value = true
     } catch (e) {
       console.error('Failed to load user:', e)
       localStorage.removeItem('currentUser')
@@ -37,79 +74,34 @@ const loadUser = () => {
 
 const saveUser = (user: User) => {
   currentUser.value = user
-  isLoggedIn.value = true
   localStorage.setItem('currentUser', JSON.stringify(user))
 }
 
 const logout = () => {
   currentUser.value = null
-  isLoggedIn.value = false
   posts.value = []
+  closeSidebar()
   localStorage.removeItem('currentUser')
-  email.value = ''
-  name.value = ''
-  loginError.value = null
-  isRegistering.value = false
+
+  authForm.value = {
+    email: '',
+    name: '',
+    error: null,
+    isLoading: false,
+    isRegistering: false,
+  }
 }
 
-const handleLogin = async () => {
-  loginError.value = null
-
-  if (!email.value.trim()) {
-    return
-  }
-
-  isLoginLoading.value = true
+const createPost = async (title: string, body: string) => {
+  if (!currentUser.value) return
 
   try {
-    const user = await usersApi.getUserByEmail(email.value)
-
-    if (!user) {
-      isRegistering.value = true
-      return
-    }
-
-    saveUser(user)
-    loadPosts()
+    const newPost = await postsApi.createPost(currentUser.value.id, title, body)
+    posts.value = [...posts.value, newPost]
+    openSidebar('view', newPost)
   } catch (error) {
-    console.error('Login error:', error)
-    loginError.value = 'Failed to login. Please try again.'
-  } finally {
-    isLoginLoading.value = false
-  }
-}
-
-const updateEmail = (value: string) => {
-  email.value = value
-  loginError.value = null
-}
-
-const handleRegister = async () => {
-  if (!email.value.trim() || !name.value.trim()) {
-    loginError.value = 'Please fill in all fields'
-    return
-  }
-
-  isLoginLoading.value = true
-
-  try {
-    const emailParts = email.value.split('@')
-    const username = emailParts[0] || 'user'
-
-    const user = await usersApi.createUser({
-      name: name.value,
-      email: email.value,
-      username: username,
-    })
-
-    saveUser(user)
-    loadPosts()
-    isRegistering.value = false
-  } catch (error) {
-    console.error('Register error:', error)
-    loginError.value = 'Failed to register. Please try again.'
-  } finally {
-    isLoginLoading.value = false
+    console.error('Error creating post:', error)
+    throw error
   }
 }
 
@@ -129,6 +121,64 @@ const loadPosts = async () => {
   }
 }
 
+const handleLogin = async () => {
+  if (!authForm.value.email.trim()) return
+
+  authForm.value.error = null
+  authForm.value.isLoading = true
+
+  try {
+    const user = await usersApi.getUserByEmail(authForm.value.email)
+
+    if (!user) {
+      authForm.value.isRegistering = true
+      return
+    }
+
+    saveUser(user)
+    loadPosts()
+  } catch (error) {
+    console.error('Login error:', error)
+    authForm.value.error = 'Failed to login. Please try again.'
+  } finally {
+    authForm.value.isLoading = false
+  }
+}
+
+const updateEmail = (value: string) => {
+  authForm.value.email = value
+  authForm.value.error = null
+}
+
+const handleRegister = async () => {
+  if (!authForm.value.email.trim() || !authForm.value.name.trim()) {
+    authForm.value.error = 'Please fill in all fields'
+    return
+  }
+
+  authForm.value.isLoading = true
+
+  try {
+    const emailParts = authForm.value.email.split('@')
+    const username = emailParts[0] || 'user'
+
+    const user = await usersApi.createUser({
+      name: authForm.value.name,
+      email: authForm.value.email,
+      username: username,
+    })
+
+    saveUser(user)
+    loadPosts()
+    authForm.value.isRegistering = false
+  } catch (error) {
+    console.error('Register error:', error)
+    authForm.value.error = 'Failed to register. Please try again.'
+  } finally {
+    authForm.value.isLoading = false
+  }
+}
+
 onMounted(() => {
   loadUser()
 
@@ -141,11 +191,11 @@ onMounted(() => {
 <template>
   <div id="app">
     <section v-if="!isLoggedIn" class="container is-flex is-justify-content-center">
-      <div v-if="!isRegistering">
+      <div v-if="!authForm.isRegistering">
         <LoginForm
-          :email="email"
-          :isLoading="isLoginLoading"
-          :error="loginError"
+          :email="authForm.email"
+          :isLoading="authForm.isLoading"
+          :error="authForm.error"
           @update:email="updateEmail"
           @submit="handleLogin"
         />
@@ -154,25 +204,29 @@ onMounted(() => {
       <div v-else>
         <form class="box mt-5" @submit.prevent="handleRegister">
           <h1 class="title is-3">You need to register</h1>
-          <div class="field">
-            <label class="label" for="user-email">Email</label>
-            <div class="control has-icons-left">
-              <input type="email" id="user-email" :value="email" class="input" disabled />
 
-              <span class="icon is-small is-left">
-                <i class="fas fa-envelope"></i>
-              </span>
-            </div>
-          </div>
+          <InputField
+            :modelValue="authForm.email"
+            @update:modelValue="authForm.email = $event"
+            label="Email"
+            id="user-email"
+            type="email"
+            icon="envelope"
+            :disabled="true"
+          />
 
-          <NeedToRegister :name="name" :isLoading="isLoginLoading" @update:name="name = $event" />
+          <NeedToRegister
+            :name="authForm.name"
+            :isLoading="authForm.isLoading"
+            @update:name="authForm.name = $event"
+          />
 
           <div class="field">
             <div class="control">
               <button
                 type="button"
                 class="button is-primary"
-                :class="{ 'is-loading': isLoginLoading }"
+                :class="{ 'is-loading': authForm.isLoading }"
                 @click="handleRegister"
               >
                 Register
@@ -185,6 +239,7 @@ onMounted(() => {
 
     <div v-else>
       <LayoutHeader :userName="currentUser?.name || ''" @logout="logout" />
+
       <div class="section">
         <div class="container">
           <div v-if="postsError" class="notification is-danger">
@@ -207,9 +262,16 @@ onMounted(() => {
             <div class="tile is-parent">
               <div class="tile is-child box is-success">
                 <div class="block">
-                  <div class="block is-flex is-justify-content-space-between">
+                  <div class="block is-flex is-justify-content-space-between is-align-items-center">
                     <p class="title">Posts</p>
-                    <button type="button" class="button is-link">Add New Post</button>
+                    <button
+                      type="button"
+                      class="button is-link"
+                      @click="openCreatePostForm"
+                      :class="{ 'is-light': isSidebarOpen && isCreatingPost }"
+                    >
+                      Add New Post
+                    </button>
                   </div>
                   <p class="has-text-centered mt-2">No posts yet</p>
                 </div>
@@ -217,8 +279,21 @@ onMounted(() => {
             </div>
           </div>
 
-          <div v-else-if="posts.length > 0" class="tile is-ancestor">
-            <PostsList :posts="posts" />
+          <div v-else-if="posts.length > 0" class="tile is-ancestor equal-height-container">
+            <PostsList
+              :posts="posts"
+              :is-sidebar-open="isSidebarOpen"
+              @open-post="openPost"
+              @create-post="openCreatePostForm"
+            />
+
+            <AppSidebar
+              :is-open="isSidebarOpen"
+              :post="currentPost"
+              :is-creating="isCreatingPost"
+              @create-post="createPost"
+              @cancel="closeSidebar"
+            />
           </div>
         </div>
       </div>
@@ -236,11 +311,13 @@ onMounted(() => {
   font-size: 1rem;
   font-weight: 700;
 }
+
 .button {
   height: 2.5em !important;
   border-radius: 4px;
   margin-bottom: 0;
 }
+
 .button.is-primary {
   color: #fff;
   font-weight: 400;
@@ -253,6 +330,24 @@ onMounted(() => {
 
 .button.is-link:hover {
   background-color: #3e56c4;
+}
+
+.button.is-link.is-light {
+  background-color: #eff1fa;
+  color: #3850b7;
+}
+
+.button.is-link.is-light:hover {
+  background-color: #e6e9f7;
+}
+
+.button.is-link.is-light:active,
+.button.is-link.is-light.is-active {
+  background-color: #dce0f4;
+}
+
+.button.is-link:focus:not(:active) {
+  box-shadow: 0 0 0 0.125em #485fc740;
 }
 
 .control.has-icons-left:hover .icon {
@@ -268,7 +363,8 @@ onMounted(() => {
   color: #363636 !important;
 }
 
-.input:focus {
+.input:focus,
+.textarea:focus {
   outline: none;
   border-color: #485fc7;
   box-shadow: 0 0 0 0.125em #485fc740;
@@ -283,15 +379,42 @@ onMounted(() => {
   color: #4a4a4a;
   display: block;
   padding: 1.25rem;
+  height: 100%;
 }
 
 .tile.is-parent {
   padding: 0.75rem;
+  transition: all 0.5s ease-in-out;
+  height: 100%;
+  display: flex;
+}
+
+.tile.is-child {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .tile.is-ancestor {
   margin-left: -0.75rem !important;
   margin-right: -0.75rem !important;
   margin-top: -0.75rem !important;
+  display: flex;
+  flex-wrap: nowrap;
+  min-height: min-content;
+}
+
+.equal-height-container {
+  display: flex;
+  align-items: stretch;
+}
+
+.equal-height-container .tile.is-parent {
+  display: flex;
+  flex-direction: column;
+}
+
+.equal-height-container .tile.is-child {
+  flex: 1;
 }
 </style>

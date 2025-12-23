@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import InputField from './InputField.vue'
+
 defineProps<{
   email: string
   isLoading?: boolean
@@ -33,25 +35,18 @@ const handleKeyUp = (event: KeyboardEvent) => {
       {{ error }}
     </div>
 
-    <div class="field">
-      <label class="label" for="user-email">Email</label>
-      <div class="control has-icons-left">
-        <input
-          type="email"
-          id="user-email"
-          :value="email"
-          @input="emit('update:email', ($event.target as HTMLInputElement).value)"
-          @keyup="handleKeyUp"
-          class="input"
-          placeholder="Enter your email"
-          required
-          :disabled="isLoading"
-        />
-        <span class="icon is-small is-left">
-          <i class="fas fa-envelope" />
-        </span>
-      </div>
-    </div>
+    <InputField
+      :modelValue="email"
+      @update:modelValue="emit('update:email', $event)"
+      @keyup="handleKeyUp"
+      label="Email"
+      id="user-email"
+      type="email"
+      placeholder="Enter your email"
+      icon="envelope"
+      :disabled="isLoading"
+      :required="true"
+    />
 
     <div class="field">
       <button
