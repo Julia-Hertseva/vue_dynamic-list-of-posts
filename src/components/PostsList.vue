@@ -3,16 +3,44 @@ import type { Post } from '@/types'
 
 defineProps<{
   posts: Post[]
+  isSidebarOpen?: boolean
 }>()
+
+const emit = defineEmits<{
+  'open-post': [post: Post]
+  'create-post': []
+}>()
+
+const handleOpenPost = (post: Post) => {
+  emit('open-post', post)
+}
+
+const handleCreatePost = () => {
+  emit('create-post')
+}
 </script>
 
 <template>
-  <div class="tile is-parent">
+  <div
+    class="tile is-parent"
+    :class="{
+      'is-6': isSidebarOpen,
+      'is-12': !isSidebarOpen,
+      'PostsList--shrinked': isSidebarOpen,
+    }"
+  >
     <div class="tile is-child box is-success">
       <div class="block">
-        <div class="block is-flex is-justify-content-space-between">
+        <div class="block is-flex is-justify-content-space-between is-align-items-center">
           <p class="title">Posts</p>
-          <button type="button" class="button is-link">Add New Post</button>
+          <button
+            type="button"
+            class="button is-link"
+            @click="handleCreatePost"
+            :class="{ 'is-light': isSidebarOpen }"
+          >
+            Add New Post
+          </button>
         </div>
 
         <table class="table is-fullwidth is-striped is-hoverable is-narrow">
@@ -28,7 +56,9 @@ defineProps<{
               <td>{{ post.id }}</td>
               <td>{{ post.title }}</td>
               <td class="has-text-right is-vcentered">
-                <button type="button" class="button is-link is-light">Open</button>
+                <button type="button" class="button is-link is-light" @click="handleOpenPost(post)">
+                  Open
+                </button>
               </td>
             </tr>
           </tbody>
@@ -38,16 +68,24 @@ defineProps<{
   </div>
 </template>
 
-<style>
+<style scoped>
+.tile.is-parent {
+  transition: all 0.5s ease-in-out;
+}
+
+.tile.is-parent.is-6 {
+  width: 50%;
+}
+
+.tile.is-parent.is-12 {
+  width: 100%;
+}
+
+.PostsList--shrinked {
+  transition: all 0.5s ease-in-out;
+}
+
 .has-background-link-light {
   background-color: #eff1fa !important;
-}
-.button.is-link.is-light {
-  background-color: #eff1fa;
-  color: #3850b7;
-}
-.button.is-link.is-light:hover,
-.button.is-link.is-light.is-hovered {
-  background-color: #e6e9f7;
 }
 </style>
