@@ -1,22 +1,32 @@
 <script setup lang="ts">
 import type { Post } from '@/types'
 
-defineProps<{
+const props = defineProps<{
   posts: Post[]
   isSidebarOpen?: boolean
+  currentPostId?: number | null
 }>()
 
 const emit = defineEmits<{
   'open-post': [post: Post]
+  'close-post': []
   'create-post': []
 }>()
 
-const handleOpenPost = (post: Post) => {
-  emit('open-post', post)
+const handlePostClick = (post: Post) => {
+  if (props.currentPostId === post.id) {
+    emit('close-post')
+  } else {
+    emit('open-post', post)
+  }
 }
 
 const handleCreatePost = () => {
   emit('create-post')
+}
+
+const isPostOpen = (postId: number) => {
+  return props.currentPostId === postId
 }
 </script>
 
@@ -56,8 +66,13 @@ const handleCreatePost = () => {
               <td>{{ post.id }}</td>
               <td>{{ post.title }}</td>
               <td class="has-text-right is-vcentered">
-                <button type="button" class="button is-link is-light" @click="handleOpenPost(post)">
-                  Open
+                <button
+                  type="button"
+                  class="button"
+                  :class="isPostOpen(post.id) ? 'is-link' : 'is-link is-light'"
+                  @click="handlePostClick(post)"
+                >
+                  {{ isPostOpen(post.id) ? 'Close' : 'Open' }}
                 </button>
               </td>
             </tr>

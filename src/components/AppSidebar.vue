@@ -9,18 +9,36 @@ interface Props {
   isOpen: boolean
   post: Post | null
   isCreating: boolean
+  isEditing: boolean
 }
 
 interface Emits {
   (e: 'create-post', title: string, body: string): void
+  (e: 'update-post', title: string, body: string): void
+  (e: 'delete-post'): void
+  (e: 'edit-post', post: Post): void
   (e: 'cancel'): void
 }
 
-const { isOpen, post, isCreating } = defineProps<Props>()
+const { isOpen, post, isCreating, isEditing } = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const handleCreatePost = (title: string, body: string) => {
   emit('create-post', title, body)
+}
+
+const handleUpdatePost = (title: string, body: string) => {
+  emit('update-post', title, body)
+}
+
+const handleDeletePost = () => {
+  emit('delete-post')
+}
+
+const handleEditPost = () => {
+  if (post) {
+    emit('edit-post', post)
+  }
 }
 
 const handleCancel = () => {
@@ -38,25 +56,34 @@ const handleCancel = () => {
   >
     <div class="tile is-child box is-success">
       <div class="content">
-        <!-- Форма створення посту -->
         <AddPost
           v-if="isCreating"
+          :mode="'create'"
           @submit="handleCreatePost"
           @cancel="handleCancel"
         />
 
-        <!-- Деталі посту -->
-        <div v-else-if="post">
-          <PostPreview :post="post" />
+        <AddPost
+          v-else-if="isEditing && post"
+          :post="post"
+          :mode="'edit'"
+          @submit="handleUpdatePost"
+          @cancel="handleCancel"
+        />
 
-          <!-- Коментарі -->
+        <div v-else-if="post">
+          <PostPreview
+            :post="post"
+            @edit="handleEditPost"
+            @delete="handleDeletePost"
+          />
+
           <div class="block">
             <NoComments />
             <WriteCommentBtn />
           </div>
         </div>
 
-        <!-- Повідомлення, якщо нічого не вибрано -->
         <div v-else-if="isOpen" class="has-text-centered" style="padding: 2rem;">
           <p class="title is-4">Select a post to view details</p>
         </div>

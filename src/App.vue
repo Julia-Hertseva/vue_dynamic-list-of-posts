@@ -28,15 +28,17 @@ const isPostsLoading = ref(false)
 
 const sidebarState = ref({
   isOpen: false,
-  mode: 'view' as 'view' | 'create',
+  mode: 'view' as 'view' | 'create' | 'edit',
   currentPost: null as Post | null,
 })
 
 const isSidebarOpen = computed(() => sidebarState.value.isOpen)
 const isCreatingPost = computed(() => sidebarState.value.mode === 'create')
+const isEditingPost = computed(() => sidebarState.value.mode === 'edit')
 const currentPost = computed(() => sidebarState.value.currentPost)
+const currentPostId = computed(() => currentPost.value?.id || null)
 
-const openSidebar = (mode: 'view' | 'create', post: Post | null = null) => {
+const openSidebar = (mode: 'view' | 'create' | 'edit', post: Post | null = null) => {
   sidebarState.value = {
     isOpen: true,
     mode,
@@ -58,6 +60,14 @@ const openCreatePostForm = () => {
 
 const openPost = (post: Post) => {
   openSidebar('view', post)
+}
+
+const closePost = () => {
+  closeSidebar()
+}
+
+const editPost = (post: Post) => {
+  openSidebar('edit', post)
 }
 
 const loadUser = () => {
@@ -101,6 +111,39 @@ const createPost = async (title: string, body: string) => {
     openSidebar('view', newPost)
   } catch (error) {
     console.error('Error creating post:', error)
+    throw error
+  }
+}
+
+const updatePost = async (title: string, body: string) => {
+  if (!currentPost.value) return
+
+  try {
+    const updatedPost = await postsApi.updatePost(currentPost.value.id, { title, body })
+
+    const index = posts.value.findIndex(post => post.id === updatedPost.id)
+    if (index !== -1) {
+      posts.value[index] = updatedPost
+    }
+
+    openSidebar('view', updatedPost)
+  } catch (error) {
+    console.error('Error updating post:', error)
+    throw error
+  }
+}
+
+const deletePost = async () => {
+  if (!currentPost.value) return
+
+  try {
+    await postsApi.deletePost(currentPost.value.id)
+
+    posts.value = posts.value.filter(post => post.id !== currentPost.value!.id)
+
+    closeSidebar()
+  } catch (error) {
+    console.error('Error deleting post:', error)
     throw error
   }
 }
@@ -282,16 +325,22 @@ onMounted(() => {
           <div v-else-if="posts.length > 0" class="tile is-ancestor equal-height-container">
             <PostsList
               :posts="posts"
-              :is-sidebar-open="isSidebarOpen"
-              @open-post="openPost"
-              @create-post="openCreatePostForm"
-            />
+        :is-sidebar-open="isSidebarOpen"
+        :current-post-id="currentPostId"
+        @open-post="openPost"
+        @close-post="closePost"
+        @create-post="openCreatePostForm"
+        />
 
             <AppSidebar
               :is-open="isSidebarOpen"
               :post="currentPost"
               :is-creating="isCreatingPost"
+              :is-editing="isEditingPost"
               @create-post="createPost"
+              @update-post="updatePost"
+              @delete-post="deletePost"
+              @edit-post="editPost"
               @cancel="closeSidebar"
             />
           </div>
