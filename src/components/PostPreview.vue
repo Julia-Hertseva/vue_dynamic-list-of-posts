@@ -45,3 +45,9 @@ const handleDeleteClick = () => {
     <p v-else>Post body</p>
   </div>
 </template>
+
+<style>
+  .has-text-danger {
+    color: #f14668 !important;
+}
+</style>

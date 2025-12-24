@@ -28,6 +28,10 @@ const handleCreatePost = () => {
 const isPostOpen = (postId: number) => {
   return props.currentPostId === postId
 }
+
+const hasOpenPost = () => {
+  return props.currentPostId !== null
+}
 </script>
 
 <template>
@@ -41,13 +45,13 @@ const isPostOpen = (postId: number) => {
   >
     <div class="tile is-child box is-success">
       <div class="block">
-        <div class="block is-flex is-justify-content-space-between is-align-items-center">
+        <div class="block is-flex is-justify-content-space-between">
           <p class="title">Posts</p>
           <button
             type="button"
             class="button is-link"
             @click="handleCreatePost"
-            :class="{ 'is-light': isSidebarOpen }"
+            :class="{ 'is-light': isSidebarOpen && !hasOpenPost() }"
           >
             Add New Post
           </button>

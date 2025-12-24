@@ -18,4 +18,6 @@ export interface Comment {
   name: string
   email: string
   body: string
+  createdAt?: string
+  updatedAt?: string
 }

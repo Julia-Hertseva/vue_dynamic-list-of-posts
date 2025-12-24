@@ -124,6 +124,7 @@ const handleCancel = () => {
         <p v-if="errors.body" class="help is-danger">{{ errors.body }}</p>
       </div>
 
+
       <div class="field is-grouped">
         <div class="control">
           <button type="submit" class="button is-link">

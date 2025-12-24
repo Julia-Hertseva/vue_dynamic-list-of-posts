@@ -5,5 +5,6 @@ import Loader from './AppLoader.vue'
 <template>
   <div class="is-flex is-justify-content-center is-align-items-center mt-2">
     <Loader />
+    <span class="ml-3">Loading comments...</span>
   </div>
 </template>
