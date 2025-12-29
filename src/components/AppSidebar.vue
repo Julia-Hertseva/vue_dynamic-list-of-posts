@@ -92,19 +92,20 @@ const handleAddComment = async (name: string, email: string, body: string) => {
   if (!post?.id) return
 
   commentsError.value = null
-
-  const tempComment: Comment = {
-    id: Date.now(),
-    postId: post.id,
-    name,
-    email,
-    body,
-  }
-
-  const optimisticCommentId = tempComment.id
-  comments.value = [...comments.value, tempComment]
+  let optimisticCommentId: number | null = null
 
   try {
+    const tempComment: Comment = {
+      id: Date.now(),
+      postId: post.id,
+      name,
+      email,
+      body,
+    }
+
+    optimisticCommentId = tempComment.id
+    comments.value = [...comments.value, tempComment]
+
     const newComment = await commentsApi.createComment({
       postId: post.id,
       name,
@@ -119,11 +120,12 @@ const handleAddComment = async (name: string, email: string, body: string) => {
     commentFormData.name = name
     commentFormData.email = email
 
-    isWritingComment.value = false
   } catch (error) {
     console.error('Error creating comment:', error)
 
-    comments.value = comments.value.filter(comment => comment.id !== optimisticCommentId)
+    if (optimisticCommentId) {
+      comments.value = comments.value.filter(comment => comment.id !== optimisticCommentId)
+    }
 
     commentsError.value = 'Failed to add comment. Please try again.'
   }

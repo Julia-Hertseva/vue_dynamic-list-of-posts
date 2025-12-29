@@ -82,6 +82,8 @@ const handleSubmit = async () => {
 }
 
 const handleCancel = () => {
+  form.name = ''
+  form.email = ''
   form.body = ''
   clearAllErrors()
   emit('cancel')
