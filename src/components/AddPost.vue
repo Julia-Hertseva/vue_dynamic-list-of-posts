@@ -117,7 +117,6 @@ const handleCancel = () => {
             class="textarea"
             :class="{ 'is-danger': errors.body }"
             placeholder="Post body"
-            rows="6"
             @input="clearBodyError"
           ></textarea>
         </div>

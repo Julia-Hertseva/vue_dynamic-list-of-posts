@@ -34,7 +34,7 @@ const handleDelete = () => {
   </article>
 </template>
 
-<style scoped>
+<style>
 .message {
   opacity: 0;
   animation: fadeIn 0.3s ease-in forwards;

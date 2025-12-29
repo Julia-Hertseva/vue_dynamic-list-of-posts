@@ -461,6 +461,8 @@ onMounted(() => {
 .equal-height-container .tile.is-parent {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  height: auto;
 }
 
 .equal-height-container .tile.is-child {
