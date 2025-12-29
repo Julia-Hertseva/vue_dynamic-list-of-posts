@@ -87,7 +87,7 @@ const hasOpenPost = () => {
   </div>
 </template>
 
-<style scoped>
+<style>
 .tile.is-parent {
   transition: all 0.5s ease-in-out;
 }

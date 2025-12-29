@@ -6,7 +6,7 @@ import WriteCommentBtn from './WriteCommentBtn.vue'
 import AddPost from './AddPost.vue'
 import CommentItem from './CommentItem.vue'
 import PostLoader from './PostLoader.vue'
-import InputField from './InputField.vue'
+import CommentForm from './CommentForm.vue'
 import * as commentsApi from '@/api/comments'
 import type { Post, Comment } from '@/types'
 
@@ -33,16 +33,9 @@ const isLoadingComments = ref(false)
 const commentsError = ref<string | null>(null)
 const isWritingComment = ref(false)
 
-const commentForm = reactive({
+const commentFormData = reactive({
   name: '',
   email: '',
-  body: '',
-})
-
-const commentErrors = reactive({
-  name: '',
-  email: '',
-  body: '',
 })
 
 const hasComments = computed(() => comments.value.length > 0)
@@ -95,90 +88,71 @@ const handleWriteComment = () => {
   isWritingComment.value = true
 }
 
-const clearAllErrors = () => {
-  if (commentErrors.name || commentErrors.email || commentErrors.body) {
-    commentErrors.name = ''
-    commentErrors.email = ''
-    commentErrors.body = ''
-  }
-}
-
-const validateComment = () => {
-  let isValid = true
-
-  commentErrors.name = ''
-  commentErrors.email = ''
-  commentErrors.body = ''
-
-  if (!commentForm.name.trim()) {
-    commentErrors.name = 'Name is required'
-    isValid = false
-  }
-
-  if (!commentForm.email.trim()) {
-    commentErrors.email = 'Email is required'
-    isValid = false
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(commentForm.email)) {
-    commentErrors.email = 'Please enter a valid email'
-    isValid = false
-  }
-
-  if (!commentForm.body.trim()) {
-    commentErrors.body = 'Comment is required'
-    isValid = false
-  }
-
-  return isValid
-}
-
-const handleAddComment = async () => {
+const handleAddComment = async (name: string, email: string, body: string) => {
   if (!post?.id) return
 
-  if (!validateComment()) {
-    return
+  commentsError.value = null
+
+  const tempComment: Comment = {
+    id: Date.now(),
+    postId: post.id,
+    name,
+    email,
+    body,
   }
+
+  const optimisticCommentId = tempComment.id
+  comments.value = [...comments.value, tempComment]
 
   try {
     const newComment = await commentsApi.createComment({
       postId: post.id,
-      name: commentForm.name,
-      email: commentForm.email,
-      body: commentForm.body,
+      name,
+      email,
+      body,
     })
 
-    comments.value = [...comments.value, newComment]
+    comments.value = comments.value.map(comment =>
+      comment.id === optimisticCommentId ? newComment : comment
+    )
 
-    commentForm.name = ''
-    commentForm.email = ''
-    commentForm.body = ''
-    commentErrors.name = ''
-    commentErrors.email = ''
-    commentErrors.body = ''
+    commentFormData.name = name
+    commentFormData.email = email
 
     isWritingComment.value = false
   } catch (error) {
     console.error('Error creating comment:', error)
-    commentsError.value = 'Failed to add comment'
+
+    comments.value = comments.value.filter(comment => comment.id !== optimisticCommentId)
+
+    commentsError.value = 'Failed to add comment. Please try again.'
   }
 }
 
 const handleCancelComment = () => {
   isWritingComment.value = false
-  commentForm.name = ''
-  commentForm.email = ''
-  commentForm.body = ''
-  commentErrors.name = ''
-  commentErrors.email = ''
-  commentErrors.body = ''
+  commentsError.value = null
 }
 
 const handleDeleteComment = async (commentId: number) => {
+  let commentToDelete: Comment | undefined;
+
   try {
-    await commentsApi.deleteComment(commentId)
+    commentToDelete = comments.value.find(c => c.id === commentId)
+
     comments.value = comments.value.filter((comment) => comment.id !== commentId)
+
+    await commentsApi.deleteComment(commentId)
+
+    commentsError.value = null
   } catch (error) {
     console.error('Error deleting comment:', error)
-    commentsError.value = 'Failed to delete comment'
+
+    if (commentToDelete) {
+      comments.value = [...comments.value, commentToDelete]
+    }
+
+    commentsError.value = 'Failed to delete comment. Please try again.'
   }
 }
 
@@ -188,16 +162,14 @@ watch(
     if (newPost && !isCreating && !isEditing) {
       loadComments()
       isWritingComment.value = false
-      commentForm.name = ''
-      commentForm.email = ''
-      commentForm.body = ''
-      commentErrors.name = ''
-      commentErrors.email = ''
-      commentErrors.body = ''
+      commentFormData.name = ''
+      commentFormData.email = ''
     } else {
       comments.value = []
       commentsError.value = null
       isWritingComment.value = false
+      commentFormData.name = ''
+      commentFormData.email = ''
     }
   },
   { immediate: true },
@@ -233,6 +205,11 @@ watch(
           <PostPreview :post="post" @edit="handleEditPost" @delete="handleDeletePost" />
 
           <div class="block">
+            <div v-if="commentsError" class="notification is-danger is-light mb-4">
+              <button class="delete" @click="commentsError = null"></button>
+              {{ commentsError }}
+            </div>
+
             <PostLoader v-if="isLoadingComments" />
 
             <div v-else-if="hasComments">
@@ -246,66 +223,13 @@ watch(
 
             <NoComments v-if="shouldShowNoComments" />
 
-            <div v-if="isWritingComment">
-              <InputField
-                :modelValue="commentForm.name"
-                @update:modelValue="commentForm.name = $event"
-                @input="clearAllErrors"
-                label="Author Name"
-                id="comment-name"
-                type="text"
-                placeholder="Name Surname"
-                icon="user"
-                :error="commentErrors.name"
-                :required="true"
-              />
-
-              <InputField
-                :modelValue="commentForm.email"
-                @update:modelValue="commentForm.email = $event"
-                @input="clearAllErrors"
-                label="Author Email"
-                id="comment-email"
-                type="email"
-                placeholder="Your Email"
-                icon="envelope"
-                :error="commentErrors.email"
-                :required="true"
-              />
-
-              <div class="field">
-                <label class="label" for="comment-body">Write Post Body</label>
-                <div class="control">
-                  <textarea
-                    v-model="commentForm.body"
-                    id="comment-body"
-                    class="textarea"
-                    :class="{ 'is-danger': commentErrors.body }"
-                    placeholder="Comment"
-                    rows="4"
-                    @input="clearAllErrors"
-                  ></textarea>
-                </div>
-                <p v-if="commentErrors.body" class="help is-danger">{{ commentErrors.body }}</p>
-              </div>
-
-              <div class="field is-grouped mt-4">
-                <div class="control">
-                  <button type="button" class="button is-link" @click="handleAddComment">
-                    Add Comment
-                  </button>
-                </div>
-                <div class="control">
-                  <button
-                    type="button"
-                    class="button is-link is-light"
-                    @click="handleCancelComment"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
+            <CommentForm
+              v-if="isWritingComment"
+              :initial-name="commentFormData.name"
+              :initial-email="commentFormData.email"
+              @submit="handleAddComment"
+              @cancel="handleCancelComment"
+            />
 
             <div v-if="!isWritingComment" class="mt-4">
               <WriteCommentBtn @click="handleWriteComment" />
