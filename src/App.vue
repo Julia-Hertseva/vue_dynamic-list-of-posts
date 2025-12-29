@@ -105,18 +105,22 @@ const logout = () => {
 const createPost = async (title: string, body: string) => {
   if (!currentUser.value) return
 
+  postsError.value = null
+
   try {
     const newPost = await postsApi.createPost(currentUser.value.id, title, body)
     posts.value = [...posts.value, newPost]
     openSidebar('view', newPost)
   } catch (error) {
     console.error('Error creating post:', error)
-    throw error
+    postsError.value = 'Failed to create post. Please try again.'
   }
 }
 
 const updatePost = async (title: string, body: string) => {
   if (!currentPost.value) return
+
+  postsError.value = null
 
   try {
     const updatedPost = await postsApi.updatePost(currentPost.value.id, { title, body })
@@ -129,12 +133,14 @@ const updatePost = async (title: string, body: string) => {
     openSidebar('view', updatedPost)
   } catch (error) {
     console.error('Error updating post:', error)
-    throw error
+    postsError.value = 'Failed to update post. Please try again.'
   }
 }
 
 const deletePost = async () => {
   if (!currentPost.value) return
+
+  postsError.value = null
 
   try {
     await postsApi.deletePost(currentPost.value.id)
@@ -144,7 +150,7 @@ const deletePost = async () => {
     closeSidebar()
   } catch (error) {
     console.error('Error deleting post:', error)
-    throw error
+    postsError.value = 'Failed to delete post. Please try again.'
   }
 }
 

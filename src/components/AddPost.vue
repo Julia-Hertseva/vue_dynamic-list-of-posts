@@ -36,17 +36,11 @@ watch(() => props.post, (newPost) => {
 }, { immediate: true })
 
 const clearTitleError = () => {
-  if (errors.title) {
-    errors.title = ''
-    errors.body = ''
-  }
+  errors.title = ''
 }
 
 const clearBodyError = () => {
-  if (errors.body) {
-    errors.title = ''
-    errors.body = ''
-  }
+  errors.body = ''
 }
 
 const validate = () => {

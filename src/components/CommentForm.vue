@@ -32,9 +32,15 @@ const errors = reactive({
   body: ''
 })
 
-const clearAllErrors = () => {
+const clearNameError = () => {
   errors.name = ''
+}
+
+const clearEmailError = () => {
   errors.email = ''
+}
+
+const clearBodyError = () => {
   errors.body = ''
 }
 
@@ -75,15 +81,23 @@ const handleSubmit = async () => {
   try {
     await emit('submit', form.name, form.email, form.body)
     form.body = ''
-    clearAllErrors()
+
+    errors.name = ''
+    errors.email = ''
+    errors.body = ''
+
   } finally {
     isLoading.value = false
   }
 }
 
 const handleCancel = () => {
+  form.name = ''
+  form.email = ''
   form.body = ''
-  clearAllErrors()
+  errors.name = ''
+  errors.email = ''
+  errors.body = ''
   emit('cancel')
 }
 </script>
@@ -93,7 +107,7 @@ const handleCancel = () => {
     <InputField
       :modelValue="form.name"
       @update:modelValue="form.name = $event"
-      @input="clearAllErrors"
+      @input="clearNameError"
       label="Author Name"
       id="comment-name"
       type="text"
@@ -106,7 +120,7 @@ const handleCancel = () => {
     <InputField
       :modelValue="form.email"
       @update:modelValue="form.email = $event"
-      @input="clearAllErrors"
+      @input="clearEmailError"
       label="Author Email"
       id="comment-email"
       type="email"
@@ -126,7 +140,7 @@ const handleCancel = () => {
           :class="{ 'is-danger': errors.body }"
           placeholder="Comment"
           rows="4"
-          @input="clearAllErrors"
+          @input="clearBodyError"
         ></textarea>
       </div>
       <p v-if="errors.body" class="help is-danger">{{ errors.body }}</p>
